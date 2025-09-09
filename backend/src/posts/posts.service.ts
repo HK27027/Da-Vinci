@@ -3,9 +3,9 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class PostsService {
   private posts = [
-    { id: 1, userId: 1, title: 'Hüseyin’in ilk postu' },
-    { id: 2, userId: 1, title: 'React ile CRUD örneği' },
-    { id: 3, userId: 2, title: 'Ali’nin blog yazısı' },
+    { id: 1, userId: 1, title: 'Hüseyin’in ilk postu' , body: 'Bu benim ilk blog yazım!' },
+    { id: 2, userId: 1, title: 'React ile CRUD örneği' , body: 'React kullanarak nasıl CRUD işlemleri yapılır?' },
+    { id: 3, userId: 2, title: 'Ali’nin blog yazısı' , body: 'Merhaba, ben Ali. Bu benim blog yazım.' },
   ];
 
   findAll() {

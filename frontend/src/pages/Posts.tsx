@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import type { IPostModel, IUserModel } from "../utils/inteerfaces";
+import { del, get, post, put } from "../utils/httpEntity.service";
+import type { IModalMode, IPostModel, IUserModel } from "../utils/inteerfaces";
 import { APIURLS } from "../utils/APIURLS";
-import { get } from "../utils/httpEntity.service";
+import { FiFileText, FiCheckCircle, FiZap } from "react-icons/fi";
+import toast from "react-hot-toast";
+
 
 function Posts() {
   const [posts, setPosts] = useState<IPostModel[]>([]);
@@ -11,18 +14,45 @@ function Posts() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
+  const [modalMode, setModalMode] = useState<IModalMode>('view');
+  const [formData, setFormData] = useState({
+    title: '',
+    body: '',
+    userId: ''
+  });
+
+  const getUsers = async () => {
+    try {
+      Promise.all([
+        get(APIURLS.USERS)
+      ])
+        .then(([usersRes]) => {
+          setUsers(usersRes.data);
+        })
+        .catch((error) => console.error("Error fetching data:", error))
+        .finally(() => setLoading(false));
+    } catch (err) {
+      console.error("user çekme hatası", err);
+    }
+  };
+  const getPosts = async () => {
+    try {
+      Promise.all([
+        get(APIURLS.POSTS)
+      ])
+        .then(([postsRes]) => {
+          setPosts(postsRes.data);
+        })
+        .catch((error) => console.error("Error fetching data:", error))
+        .finally(() => setLoading(false));
+    } catch (err) {
+      console.error("post çekme hatası", err);
+    }
+  }
 
   useEffect(() => {
-    Promise.all([
-      get(APIURLS.POSTS),
-      get(APIURLS.USERS)
-    ])
-      .then(([postsRes, usersRes]) => {
-        setPosts(postsRes.data);
-        setUsers(usersRes.data);
-      })
-      .catch((error) => console.error("Error fetching data:", error))
-      .finally(() => setLoading(false));
+    getUsers();
+    getPosts();
   }, []);
 
   const getUserName = (userId: number) => {
@@ -42,16 +72,182 @@ function Posts() {
   };
 
   const handleAddPost = () => {
-    console.log("Add new post");
+    setSelectedPost(null);
+    setFormData({ title: '', body: '', userId: '' });
+    setModalMode('add');
+    setIsModalOpen(true);
   };
 
   const handleEditPost = (post: IPostModel) => {
-    console.log("Edit post:", post);
+    setSelectedPost(post);
+    setFormData({
+      title: post.title,
+      body: post.body,
+      userId: post.userId.toString()
+    });
+    setModalMode('edit');
+    setIsModalOpen(true);
   };
 
-  const handleDeletePost = (postId: number) => {
-    console.log("Delete post:", postId);
+  const handleDeletePost = (post: IPostModel) => {
+    setSelectedPost(post);
+    setModalMode('delete');
+    setIsModalOpen(true);
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const postData = {
+        ...formData,
+        userId: parseInt(formData.userId)
+      };
+
+      if (modalMode === 'add') {
+        const response = await post(APIURLS.POSTS, postData);
+        if (response && response.data) {
+          toast.success('Post eklendi!');
+          getPosts();
+        }
+
+      } else if (modalMode === 'edit' && selectedPost) {
+        const response = await put(`${APIURLS.POSTS}/${selectedPost.id}`, postData);
+        if (response && response.data) {
+          toast.success('Post Güncellendi!');
+          getPosts();
+        }
+      } else if (modalMode === 'delete' && selectedPost) {
+        await del(`${APIURLS.POSTS}/${selectedPost.id}`);
+
+        toast.success("Post Silindi!");
+        getPosts();
+
+      }
+      setIsModalOpen(false);
+    } catch (error) {
+      toast.error("Bir hata oluştu. Lütfen tekrar deneyin.");
+    }
+  };
+
+  const renderModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">
+            {modalMode === 'view' && "Gönderi Detayları"}
+            {modalMode === 'add' && "Yeni Gönderi Ekle"}
+            {modalMode === 'edit' && "Gönderi Düzenle"}
+            {modalMode === 'delete' && "Gönderi Sil"}
+          </h3>
+          <button
+            onClick={() => setIsModalOpen(false)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {modalMode === 'delete' ? (
+          <div className="space-y-4">
+            <p className="text-gray-700">Bu gönderiyi silmek istediğinizden emin misiniz?</p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                İptal
+              </button>
+              <button
+                onClick={handleSubmit}
+                className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700"
+              >
+                Sil
+              </button>
+            </div>
+          </div>
+        ) : modalMode === 'view' ? (
+          <div className="space-y-3">
+            {selectedPost && (
+              <>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Post ID</label>
+                  <p className="text-gray-900">{selectedPost.id}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Başlık</label>
+                  <p className="text-gray-900">{selectedPost.title}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">İçerik</label>
+                  <p className="text-gray-900">{selectedPost.body}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Yazar</label>
+                  <p className="text-gray-900">{getUserName(selectedPost.userId)}</p>
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Başlık</label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">İçerik</label>
+              <textarea
+                value={formData.body}
+                onChange={(e) => setFormData({ ...formData, body: e.target.value })}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                rows={4}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Yazar</label>
+              <select
+                value={formData.userId}
+                onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                required
+              >
+                <option value="">Yazar Seçin</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id.toString()}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                İptal
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700"
+              >
+                {modalMode === 'add' ? 'Ekle' : 'Güncelle'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -113,9 +309,7 @@ function Posts() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="bg-green-100 p-3 rounded-lg">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                </svg>
+                <FiFileText className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
                 <p className="text-2xl font-semibold text-gray-900">{posts.length}</p>
@@ -139,9 +333,7 @@ function Posts() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="bg-purple-100 p-3 rounded-lg">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+                <FiCheckCircle className="w-6 h-6 text-purple-600" />
               </div>
               <div className="ml-4">
                 <p className="text-2xl font-semibold text-gray-900">{filteredPosts.length}</p>
@@ -152,9 +344,7 @@ function Posts() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="bg-orange-100 p-3 rounded-lg">
-                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+                <FiZap className="w-6 h-6 text-orange-600" />
               </div>
               <div className="ml-4">
                 <p className="text-2xl font-semibold text-gray-900">{users.length > 0 ? Math.round(posts.length / users.length) : 0}</p>
@@ -214,7 +404,7 @@ function Posts() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeletePost(post.id);
+                          handleDeletePost(post);
                         }}
                         className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
                       >
@@ -226,7 +416,7 @@ function Posts() {
                   </div>
                 </div>
               ))}
-              
+
               {filteredPosts.length === 0 && (
                 <div className="text-center py-12">
                   <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -264,41 +454,7 @@ function Posts() {
         </div>
       </div>
 
-      {isModalOpen && selectedPost && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4 max-h-96 overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Gönderi Detayları</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700">Post ID</label>
-                <p className="text-gray-900">{selectedPost.id}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Başlık</label>
-                <p className="text-gray-900 font-medium">{selectedPost.title}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Yazar</label>
-                <p className="text-gray-900">{getUserName(selectedPost.userId)} (ID: {selectedPost.userId})</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Kullanıcı ID</label>
-                <p className="text-gray-900">{selectedPost.userId}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {isModalOpen && renderModal()}
     </div>
   );
 }

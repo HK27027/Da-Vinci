@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import type { IUserModel } from "../utils/inteerfaces";
-import { get } from "../utils/httpEntity.service";
+import { del, get, post, put } from "../utils/httpEntity.service";
+import type { IModalMode, IUserModel } from "../utils/inteerfaces";
 import { APIURLS } from "../utils/APIURLS";
+import { FiPlus, FiSearch, FiUser, FiEdit2, FiTrash2, FiX } from "react-icons/fi";
+import toast from "react-hot-toast";
+
 
 function Users() {
   const [users, setUsers] = useState<IUserModel[]>([]);
@@ -9,12 +12,26 @@ function Users() {
   const [selectedUser, setSelectedUser] = useState<IUserModel | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [modalMode, setModalMode] = useState<IModalMode>('view');
+  const [formData, setFormData] = useState({
+    name: '',
+    username: '',
+    email: ''
+  });
+
+  const getUser = async () => {
+    try {
+      const res = await get(APIURLS.USERS);
+      setUsers(res.data);
+      setLoading(false)
+    } catch (exx) {
+      setLoading(false)
+      console.error("kullanıcı çekilirken hata oluştu", exx);
+    }
+  }
 
   useEffect(() => {
-    get(APIURLS.USERS)
-      .then((res) => setUsers(res.data))
-      .catch((error) => console.error("Error fetching users:", error))
-      .finally(() => setLoading(false));
+    getUser();
   }, []);
 
   const filteredUsers = users.filter(user =>
@@ -29,15 +46,58 @@ function Users() {
   };
 
   const handleAddUser = () => {
-    console.log("Add new user");
+    setSelectedUser(null);
+    setFormData({ name: '', username: '', email: '' });
+    setModalMode('add');
+    setIsModalOpen(true);
   };
 
   const handleEditUser = (user: IUserModel) => {
-    console.log("Edit user:", user);
+    setSelectedUser(user);
+    setFormData({
+      name: user.name,
+      username: user.username,
+      email: user.email
+    });
+    setModalMode('edit');
+    setIsModalOpen(true);
   };
 
-  const handleDeleteUser = (userId: number) => {
-    console.log("Delete user:", userId);
+  const handleDeleteUser = (user: IUserModel) => {
+    setSelectedUser(user);
+    setModalMode('delete');
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (modalMode === 'add') {
+        const response = await post(APIURLS.USERS, formData);
+        if (response && response.data) {
+          toast.success('Kullanıcı  Eklendi!');
+          getUser();
+        }
+      } else if (modalMode === 'edit' && selectedUser) {
+        const response = await put(`${APIURLS.USERS}/${selectedUser.id}`, formData);
+        if (response && response.data) {
+
+          toast.success('Kullanıcı Güncellendi!');
+          getUser();
+        }
+
+      } else if (modalMode === 'delete' && selectedUser) {
+        await del(`${APIURLS.USERS}/${selectedUser.id}`);
+
+        toast.success('Kullanıcı Silindi!');
+        getUser();
+
+
+      }
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Error handling user:", error);
+    }
   };
 
   if (loading) {
@@ -61,9 +121,7 @@ function Users() {
               onClick={handleAddUser}
               className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center"
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
+              <FiPlus className="w-5 h-5 mr-2" />
               Yeni Kullanıcı Ekle
             </button>
           </div>
@@ -76,9 +134,7 @@ function Users() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <svg className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <FiSearch className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
           </div>
         </div>
 
@@ -86,9 +142,7 @@ function Users() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
               <div className="bg-blue-100 p-3 rounded-lg">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                </svg>
+                <FiUser className="w-6 h-6 text-blue-600" />
               </div>
               <div className="ml-4">
                 <p className="text-2xl font-semibold text-gray-900">{users.length}</p>
@@ -153,20 +207,16 @@ function Users() {
                         }}
                         className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
+                        <FiEdit2 className="w-5 h-5" />
                       </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteUser(user.id);
+                          handleDeleteUser(user);
                         }}
                         className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        <FiTrash2 className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
@@ -177,38 +227,114 @@ function Users() {
         </div>
       </div>
 
-      {isModalOpen && selectedUser && (
+      {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Kullanıcı Detayları</h3>
+              <h3 className="text-lg font-semibold">
+                {modalMode === 'view' && "Kullanıcı Detayları"}
+                {modalMode === 'add' && "Yeni Kullanıcı Ekle"}
+                {modalMode === 'edit' && "Kullanıcı Düzenle"}
+                {modalMode === 'delete' && "Kullanıcı Sil"}
+              </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <FiX className="w-6 h-6" />
               </button>
             </div>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium text-gray-700">ID</label>
-                <p className="text-gray-900">{selectedUser.id}</p>
+
+            {modalMode === 'delete' ? (
+              <div className="space-y-4">
+                <p className="text-gray-700">Bu kullanıcıyı silmek istediğinizden emin misiniz?</p>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  >
+                    İptal
+                  </button>
+                  <button
+                    onClick={handleSubmit}
+                    className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700"
+                  >
+                    Sil
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Ad</label>
-                <p className="text-gray-900">{selectedUser.name}</p>
+            ) : modalMode === 'view' ? (
+              <div className="space-y-3">
+                {selectedUser && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">ID</label>
+                      <p className="text-gray-900">{selectedUser.id}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">Ad</label>
+                      <p className="text-gray-900">{selectedUser.name}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">Kullanıcı Adı</label>
+                      <p className="text-gray-900">{selectedUser.username}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">E-posta</label>
+                      <p className="text-gray-900">{selectedUser.email}</p>
+                    </div>
+                  </>
+                )}
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Kullanıcı Adı</label>
-                <p className="text-gray-900">{selectedUser.username}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">E-posta</label>
-                <p className="text-gray-900">{selectedUser.email}</p>
-              </div>
-            </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Ad</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Kullanıcı Adı</label>
+                  <input
+                    type="text"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">E-posta</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end space-x-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  >
+                    İptal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                  >
+                    {modalMode === 'add' ? 'Ekle' : 'Güncelle'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
