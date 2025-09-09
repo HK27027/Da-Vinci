@@ -1,12 +1,12 @@
 Proje Adı
 
-Bu proje, React + TypeScript frontend ve Next.js / Nodejs backend ile geliştirilmiş basit bir kullanıcı ve gönderi yönetim uygulamasıdır. Kullanıcılar ve gönderiler üzerinde CRUD işlemleri yapılabilir, arama ve filtreleme özelliği mevcuttur.
+Bu proje, React + TypeScript frontend ve NestJS  backend ile geliştirilmiş basit bir kullanıcı ve gönderi yönetim uygulamasıdır. Kullanıcılar ve gönderiler üzerinde CRUD işlemleri yapılabilir, arama ve filtreleme özelliği mevcuttur.
 
 Teknolojiler
 
 Frontend: React, TypeScript, Tailwind CSS, React Icons, react-hot-toast
 
-Backend: Next.js, Nodejs
+Backend: NestJS 
 
 Özellikler
 
