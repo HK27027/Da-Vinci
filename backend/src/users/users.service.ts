@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 
 @Injectable()
 export class UsersService {
@@ -15,13 +15,27 @@ export class UsersService {
     return this.users.find(user => user.id === id);
   }
 
+  private isEmailTaken(email: string, excludeUserId?: number): boolean {
+    return this.users.some(user => 
+      user.email === email && user.id !== excludeUserId
+    );
+  }
+
   create(user: any) {
+    if (this.isEmailTaken(user.email)) {
+      throw new ConflictException('Bu email adresi zaten kullanımda');
+    }
+
     const newUser = { id: Date.now(), ...user };
     this.users.push(newUser);
     return newUser;
   }
 
   update(id: number, updateUser: any) {
+    if (updateUser.email && this.isEmailTaken(updateUser.email, id)) {
+      throw new ConflictException('Bu email adresi başka bir kullanıcı tarafından kullanılıyor');
+    }
+
     const index = this.users.findIndex(u => u.id === id);
     if (index > -1) {
       this.users[index] = { ...this.users[index], ...updateUser };

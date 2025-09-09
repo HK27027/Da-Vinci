@@ -92,18 +92,17 @@ function Users() {
       if (modalMode === 'add') {
         const response = await post(APIURLS.USERS, formData);
         if (response && response.data) {
-          toast.success('Kullanıcı  Eklendi!');
+          toast.success('Kullanıcı Eklendi!');
           getUser();
         }
       } else if (modalMode === 'edit' && selectedUser) {
         const response = await put(`${APIURLS.USERS}/${selectedUser.id}`, formData);
         if (response && response.data) {
-
           toast.success('Kullanıcı Güncellendi!');
           getUser();
         }
-
-      } else if (modalMode === 'delete' && selectedUser) {
+      }
+      else if (modalMode === 'delete' && selectedUser) {
         await del(`${APIURLS.USERS}/${selectedUser.id}`);
 
         toast.success('Kullanıcı Silindi!');
@@ -112,8 +111,12 @@ function Users() {
 
       }
       setIsModalOpen(false);
-    } catch (error) {
-       toast.error('Bir hata oluştu!');
+    } catch (error: any) {
+      if (error.response?.status === 409) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error('Bir hata oluştu!');
+      }
       console.error("Error handling user:", error);
     }
   };
