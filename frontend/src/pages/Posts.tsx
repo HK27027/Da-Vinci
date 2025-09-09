@@ -125,6 +125,7 @@ function Posts() {
       }
       setIsModalOpen(false);
     } catch (error) {
+       toast.error('Bir hata oluştu!');
       toast.error("Bir hata oluştu. Lütfen tekrar deneyin.");
     }
   };

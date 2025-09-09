@@ -96,6 +96,7 @@ function Users() {
       }
       setIsModalOpen(false);
     } catch (error) {
+       toast.error('Bir hata oluştu!');
       console.error("Error handling user:", error);
     }
   };
