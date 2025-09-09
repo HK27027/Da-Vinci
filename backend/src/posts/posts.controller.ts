@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Put, Query } from '@nestjs/common';
 import { PostsService } from './posts.service';
 
 @Controller('posts')
@@ -8,6 +8,19 @@ export class PostsController {
   @Get()
   findAll() {
     return this.postsService.findAll();
+  }
+
+  @Get('search')
+  search(
+    @Query('term') searchTerm: string,
+    @Query('userId') userId: string
+  ) {
+    return this.postsService.findAllFiltered(searchTerm, userId);
+  }
+
+  @Get('user/:userId')
+  findByUser(@Param('userId') userId: string) {
+    return this.postsService.findByUser(+userId);
   }
 
   @Get(':id')
@@ -28,11 +41,5 @@ export class PostsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.postsService.remove(+id);
-  }
-
-  // Belirli bir user'a ait postları getir
-  @Get('user/:userId')
-  findByUser(@Param('userId') userId: string) {
-    return this.postsService.findByUser(+userId);
   }
 }

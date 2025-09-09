@@ -39,4 +39,24 @@ export class PostsService {
   findByUser(userId: number) {
     return this.posts.filter(post => post.userId === userId);
   }
+
+  findAllFiltered(searchTerm: string, userId: string) {
+    let filteredPosts = [...this.posts];
+
+    if (userId && userId !== 'all') {
+      filteredPosts = filteredPosts.filter(post => 
+        post.userId === parseInt(userId)
+      );
+    }
+
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filteredPosts = filteredPosts.filter(post =>
+        post.title.toLowerCase().includes(search) ||
+        post.body.toLowerCase().includes(search)
+      );
+    }
+
+    return filteredPosts;
+  }
 }
