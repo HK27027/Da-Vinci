@@ -34,4 +34,15 @@ export class UsersService {
     this.users = this.users.filter(u => u.id !== id);
     return { deleted: true };
   }
+
+  findAllFiltered(searchTerm: string) {
+    if (!searchTerm) {
+      return this.users;
+    }
+
+    const search = searchTerm.toLowerCase();
+    return this.users.filter(user =>
+      user.name.toLowerCase().includes(search) 
+    );
+  }
 }

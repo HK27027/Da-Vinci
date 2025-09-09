@@ -34,11 +34,28 @@ function Users() {
     getUser();
   }, []);
 
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const searchUsers = async (term: string) => {
+    try {
+      const res = await get(`${APIURLS.USERS}/search?term=${encodeURIComponent(term)}`);
+      console.log("Arama sonuçları:", res);
+      setUsers(res.data);
+    } catch (err) {
+      console.error("Arama yapılırken hata oluştu", err);
+      toast.error('Arama sırasında bir hata oluştu!');
+    }
+  };
+
+  useEffect(() => {
+    if(searchTerm===""){
+      getUser();
+      return;
+    }
+    const delayDebounceFn = setTimeout(() => {
+      searchUsers(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
 
   const handleUserClick = (user: IUserModel) => {
     setSelectedUser(user);
@@ -159,7 +176,7 @@ function Users() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-2xl font-semibold text-gray-900">{filteredUsers.length}</p>
+                <p className="text-2xl font-semibold text-gray-900">{users.length}</p>
                 <p className="text-gray-600">Aktif Kullanıcı</p>
               </div>
             </div>
@@ -172,7 +189,7 @@ function Users() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-2xl font-semibold text-gray-900">{filteredUsers.length}</p>
+                <p className="text-2xl font-semibold text-gray-900">{users.length}</p>
                 <p className="text-gray-600">Arama Sonucu</p>
               </div>
             </div>
@@ -183,7 +200,7 @@ function Users() {
           <div className="p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Tüm Kullanıcılar</h2>
             <div className="grid gap-4">
-              {filteredUsers.map((user) => (
+              {users&& users?.map((user) => (
                 <div
                   key={user.id}
                   className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200 cursor-pointer"
